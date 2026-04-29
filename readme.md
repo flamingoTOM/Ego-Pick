@@ -530,7 +530,425 @@ bool reset_flag          # 重置标志
 | 仪表盘 | rqt_multiplot, rqt_plot | 数据绘图 |
 | 自定义面板 | rviz_python_panel | Python扩展 |
 
-### 6.4 图像处理
+#### Qt自定义可视化（推荐）
+
+Qt可视化布局：
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Qt Application Window                    │
+├───────────────┬───────────────┬───────────────────────────┤
+│  Gripper1 RGB │ Gripper2 RGB │                           │
+│    (Left)    │    (Left)    │                           │
+├───────────────┼───────────────┤                           │
+│ Gripper1 RGB  │ Gripper2 RGB │                           │
+│   (Right)     │   (Right)    │                           │
+├───────────────┼───────────────┼───────────────────────────┤
+│Gripper1 Fisheye│Gripper2 Fisheye│                       │
+│   (Left)      │    (Left)     │     3D Motion View     │
+├───────────────┼───────────────┤      (Combined)         │
+│Gripper1 Fisheye│Gripper2 Fisheye│                       │
+│   (Right)     │   (Right)     │                       │
+└───────────────┴───────────────┴───────────────────────────┘
+```
+
+Qt可视化伪代码：
+```python
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image, CompressedImage
+from geometry_msgs.msg import PoseStamped
+from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QLabel
+from PyQt5.QtCore import QTimer
+from cv_bridge import CvBridge
+
+class GripperVisualizer(Node):
+    def __init__(self):
+        super().__init__('gripper_visualizer')
+
+        self.bridge = CvBridge()
+
+        # ========== 订阅话题 ==========
+        # RGB图像
+        self.create_subscription(Image,
+            '/gripper1/stereo/left/image', self.cb_g1_rgb_l, 10)
+        self.create_subscription(Image,
+            '/gripper1/stereo/right/image', self.cb_g1_rgb_r, 10)
+        self.create_subscription(Image,
+            '/gripper2/stereo/left/image', self.cb_g2_rgb_l, 10)
+        self.create_subscription(Image,
+            '/gripper2/stereo/right/image', self.cb_g2_rgb_r, 10)
+
+        # 鱼眼图像
+        self.create_subscription(Image,
+            '/gripper1/fisheye/image', self.cb_g1_fish, 10)
+        self.create_subscription(Image,
+            '/gripper2/fisheye/image', self.cb_g2_fish, 10)
+
+        # 位姿（3D运动）
+        self.create_subscription(PoseStamped,
+            '/gripper1/pose', self.cb_g1_pose, 10)
+        self.create_subscription(PoseStamped,
+            '/gripper2/pose', self.cb_g2_pose, 10)
+
+        # ========== Qt界面 ==========
+        self.app = QApplication([])
+        self.window = QMainWindow()
+        self.window.setWindowTitle('Ego-Pick Visualizer')
+        self.window.resize(1280, 720)
+
+        # 创建图像显示标签
+        self.labels = {
+            'g1_rgb_l': QLabel(),
+            'g1_rgb_r': QLabel(),
+            'g2_rgb_l': QLabel(),
+            'g2_rgb_r': QLabel(),
+            'g1_fish': QLabel(),
+            'g2_fish': QLabel(),
+        }
+
+        # 3D可视化（使用Open3D或matplotlib）
+        self.ax_3d = None  # 3D坐标轴
+
+        # 定时器刷新UI
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_ui)
+        self.timer.start(33)  # ~30Hz
+
+    def update_ui(self):
+        """更新所有图像显示"""
+        for name, img in self.current_images.items():
+            if img is not None:
+                h, w = img.shape[:2]
+                bytes_per_line = 3 * w
+                qt_img = QImage(img.data, w, h,
+                               bytes_per_line, QImage.Format_RGB888)
+                self.labels[name].setPixmap(QPixmap.fromImage(qt_img))
+
+        # 更新3D轨迹
+        self.update_3d_view()
+
+    def update_3d_view(self):
+        """更新3D运动视图"""
+        if self.pose_history_g1 and self.pose_history_g2:
+            # 绘制两个夹爪的3D轨迹
+            pass
+
+    def cb_g1_rgb_l(self, msg):
+        self.current_images['g1_rgb_l'] = self.bridge.imgmsg_to_cv2(msg)
+
+    # ... 其他回调类似 ...
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    visualizer = GripperVisualizer()
+
+    # 在单独线程运行ROS2
+    executor = rclpy.executors.MultiThreadedExecutor()
+    executor.add_node(visualizer)
+
+    # 运行Qt应用
+    import threading
+    ros_thread = threading.Thread(target=executor.spin)
+    ros_thread.start()
+
+    visualizer.app.exec_()
+
+    visualizer.destroy_node()
+    rclpy.shutdown()
+
+
+# ========== 3D运动视图（Open3D） ==========
+import open3d as o3d
+
+class MotionVisualizer3D:
+    def __init__(self):
+        self.vis = o3d.visualization.Visualizer()
+        self.vis.create_window('3D Motion')
+
+        # 夹爪1轨迹线
+        self.line_g1 = o3d.geometry.LineSet()
+        # 夹爪2轨迹线
+        self.line_g2 = o3d.geometry.LineSet()
+
+        # 添加坐标系
+        self.coord = o3d.geometry.TriangleMesh.create_coordinate_frame()
+
+    def add_pose(self, pose, gripper_id):
+        """添加新的位姿点到轨迹"""
+        # 提取位置
+        pos = [pose.position.x, pose.position.y, pose.position.z]
+        # 添加到对应夹爪的轨迹点
+        # 更新线段集合
+
+    def update(self):
+        """刷新3D视图"""
+        self.vis.update_geometry(self.line_g1)
+        self.vis.update_geometry(self.line_g2)
+        self.vis.poll_events()
+        self.vis.update_renderer()
+```
+
+Qt依赖包：
+```yaml
+dependencies:
+  - rclpy
+  - sensor_msgs
+  - geometry_msgs
+  - image_transport
+  - cv_bridge
+  - PyQt5  # 或 PyQt6
+  - open3d  # 3D可视化（可选）
+  - trimesh  # STEP模型加载
+```
+
+---
+
+### 6.4 STEP模型加载与IMU姿态可视化
+
+#### STEP模型加载
+
+STEP文件 → Open3D三角网格 → 应用IMU四元数姿态
+
+```python
+import trimesh
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
+def load_step_model(step_path):
+    """加载STEP模型并转为Open3D网格"""
+    # 方法1: trimesh直接加载
+    mesh = trimesh.load_mesh(step_path)
+
+    # 方法2: 若trimesh不支持，用OCC(OpenCASCADE)
+    # 需要安装: pip install cadquery-occ蛭
+
+    # 转为numpy数组
+    vertices = np.array(mesh.vertices)
+    faces = np.array(mesh.faces)
+
+    # 转为Open3D格式
+    import open3d as o3d
+    o3d_mesh = o3d.geometry.TriangleMesh()
+    o3d_mesh.vertices = o3d.utility.Vector3dVector(vertices)
+    o3d_mesh.triangles = o3d.utility.Vector3iVector(faces)
+    o3d_mesh.compute_vertex_normals()
+
+    return o3d_mesh
+
+
+class GripperModel:
+    def __init__(self, step_path):
+        self.mesh = load_step_model(step_path)
+        self.mesh.paint_uniform_color([0.8, 0.2, 0.2])  # 红色
+
+    def set_pose(self, position, quaternion):
+        """设置模型姿态（来自IMU）
+
+        Args:
+            position: [x, y, z] 位置
+            quaternion: [x, y, z, w] 四元数
+        """
+        # 创建变换矩阵
+        T = np.eye(4)
+
+        # 设置位置
+        T[:3, 3] = position
+
+        # 设置旋转（四元数 → 旋转矩阵）
+        rot = R.from_quat(quaternion)  # scipy
+        T[:3, :3] = rot.as_matrix()
+
+        # 应用变换
+        self.mesh.transform(T)
+
+    def reset_pose(self, step_path):
+        """重置模型（重新加载）"""
+        self.mesh = load_step_model(step_path)
+```
+
+#### IMU姿态订阅与更新
+
+```python
+from sensor_msgs.msg import Imu
+
+class GripperIMUVisualizer:
+    def __init__(self, step_path_g1, step_path_g2):
+        # 加载模型
+        self.gripper1 = GripperModel(step_path_g1)
+        self.gripper2 = GripperModel(step_path_g2)
+
+        # Open3D可视化窗口
+        self.vis = o3d.visualization.Visualizer()
+        self.vis.create_window('Gripper 3D View', 1280, 720)
+
+        # 添加坐标系
+        coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)
+        self.vis.add_geometry(coord)
+
+        # 添加夹爪模型
+        self.vis.add_geometry(self.gripper1.mesh)
+        self.vis.add_geometry(self.gripper2.mesh)
+
+        # ROS2订阅
+        self.sub_imu1 = self.create_subscription(Imu,
+            '/gripper1/imu/data', self.cb_imu1, 10)
+        self.sub_imu2 = self.create_subscription(Imu,
+            '/gripper2/imu/data', self.cb_imu2, 10)
+
+        # 当前位姿
+        self.pose1 = [0, 0, 0]
+        self.pose2 = [0, 0, 0]
+        self.quat1 = [0, 0, 0, 1]
+        self.quat2 = [0, 0, 0, 1]
+
+    def cb_imu1(self, msg):
+        """IMU回调（需要已积分的位姿）"""
+        # 从IMU原始数据积分得到位姿（见pose_estimator）
+        # 这里直接使用pose_estimator发布的位姿
+        self.pose1 = [msg.orientation.x,
+                      msg.orientation.y,
+                      msg.orientation.z]
+        self.quat1 = [msg.orientation.x,
+                       msg.orientation.y,
+                       msg.orientation.z,
+                       msg.orientation.w]
+
+    def update(self):
+        """更新3D显示"""
+        # 重新加载并应用新姿态
+        self.gripper1.mesh = load_step_model(self.gripper1.step_path)
+        self.gripper1.set_pose(self.pose1, self.quat1)
+
+        self.gripper2.mesh = load_step_model(self.gripper2.step_path)
+        self.gripper2.set_pose(self.pose2, self.quat2)
+
+        # 更新几何体
+        self.vis.update_geometry(self.gripper1.mesh)
+        self.vis.update_geometry(self.gripper2.mesh)
+
+        # 刷新
+        self.vis.poll_events()
+        self.vis.update_renderer()
+```
+
+#### 完整集成
+
+```python
+class EgoPickVisualizer(Node):
+    def __init__(self):
+        super().__init__('ego_pick_visualizer')
+
+        # ========== 1. 图像订阅 ==========
+        self.image_subs = {
+            'g1_rgb_l': Image,
+            'g1_rgb_r': Image,
+            'g2_rgb_l': Image,
+            'g2_rgb_r': Image,
+            'g1_fish': Image,
+            'g2_fish': Image,
+        }
+        # ... 订阅代码同前 ...
+
+        # ========== 2. STEP模型加载 ==========
+        self.gripper1_model = GripperModel('path/to/gripper1.step')
+        self.gripper2_model = GripperModel('path/to/gripper2.step')
+
+        # ========== 3. 位姿订阅（IMU积分结果）==========
+        self.create_subscription(PoseStamped,
+            '/gripper1/pose', self.cb_pose1, 10)
+        self.create_subscription(PoseStamped,
+            '/gripper2/pose', self.cb_pose2, 10)
+
+        # ========== 4. Open3D 3D窗口 ==========
+        self.vis3d = o3d.visualization.Visualizer()
+        self.vis3d.create_window('3D Motion', 640, 480)
+
+        # 添加地面
+        ground = o3d.geometry.TriangleMesh.create_box(2, 2, 0.01)
+        ground.translate([0, 0, -0.01])
+        ground.paint_uniform_color([0.9, 0.9, 0.9])
+        self.vis3d.add_geometry(ground)
+
+        # 添加坐标系
+        self.vis3d.add_geometry(
+            o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1))
+
+        # 添加夹爪模型
+        self.vis3d.add_geometry(self.gripper1_model.mesh)
+        self.vis3d.add_geometry(self.gripper2_model.mesh)
+
+        # 夹爪颜色区分
+        self.gripper1_model.mesh.paint_uniform_color([1, 0.2, 0.2])  # 红色
+        self.gripper2_model.mesh.paint_uniform_color([0.2, 0.2, 1])  # 蓝色
+
+        # ========== 5. Qt图像窗口 ==========
+        self.app = QApplication([])
+        self.window = QMainWindow()
+        layout = QGridLayout()
+
+        # 2x3 图像网格
+        layout.addWidget(self.labels['g1_rgb_l'], 0, 0)
+        layout.addWidget(self.labels['g1_rgb_r'], 0, 1)
+        layout.addWidget(self.labels['g2_rgb_l'], 1, 0)
+        layout.addWidget(self.labels['g2_rgb_r'], 1, 1)
+        layout.addWidget(self.labels['g1_fish'], 2, 0)
+        layout.addWidget(self.labels['g2_fish'], 2, 1)
+
+        # 3D视图放在右侧
+        self.o3d_widget = self.create_o3d_widget()  # 需要包装Open3D窗口
+        layout.addWidget(self.o3d_widget, 0, 2, 3, 1)
+
+        # ========== 6. 刷新定时器 ==========
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_all)
+        self.timer.start(33)  # 30Hz
+
+    def update_all(self):
+        """刷新所有"""
+        # 刷新图像
+        self.update_images()
+
+        # 刷新3D
+        self.gripper1_model.set_pose(self.pose1, self.quat1)
+        self.gripper2_model.set_pose(self.pose2, self.quat2)
+        self.vis3d.update_geometry(self.gripper1_model.mesh)
+        self.vis3d.update_geometry(self.gripper2_model.mesh)
+        self.vis3d.poll_events()
+        self.vis3d.update_renderer()
+```
+
+#### 3D视图嵌入Qt窗口
+
+Open3D的VisualizerWindow不能直接嵌入Qt，需要用 widget 包装：
+
+```python
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWinExtras import QtWin
+
+# Open3D渲染到QWidget的hack方法
+# 方法1: 使用 offscreen rendering
+def create_o3d_offscreen(self):
+    """创建离屏渲染的O3D visualizer"""
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(visible=False)  # 不可见
+
+    # 渲染到 numpy array
+    def render():
+        vis.poll_events()
+        vis.update_renderer()
+        img = vis.capture_screen_float_buffer()
+        return (np.asarray(img) * 255).astype(np.uint8)
+
+    return render
+
+# 方法2: 使用 o3d.visualization.ViewControl
+# 更流畅但需要平台特定代码
+```
+
+---
+
+### 6.5 图像处理
 
 | 用途 | 库 | 说明 |
 |------|-----|------|
@@ -539,7 +957,7 @@ bool reset_flag          # 重置标志
 | 鱼眼校正 | OpenCV fisheye模块 | 畸变校正 |
 | GPU加速 | CUDA + OpenCV CUDA | Jetson优化 |
 
-### 6.5 数据处理
+### 6.6 数据处理
 
 | 用途 | 库 | 说明 |
 |------|-----|------|
@@ -548,7 +966,7 @@ bool reset_flag          # 重置标志
 | 时间同步 | message_filters | 话题同步 |
 | 数据存储 | rosbag2 + h5py | 录制存储 |
 
-### 6.6 推荐ROS2包
+### 6.7 推荐ROS2包
 
 ```yaml
 # 必需包
