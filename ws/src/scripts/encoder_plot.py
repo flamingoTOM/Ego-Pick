@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
 from PyQt5.QtCore import QTimer
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.gridspec import GridSpec
 
 
 class EncoderPlotWindow(QMainWindow):
@@ -48,18 +49,23 @@ class EncoderPlotWindow(QMainWindow):
         self.canvas = FigureCanvas(self.figure)
         layout.addWidget(self.canvas)
 
-        self.ax_angle = self.figure.add_subplot(121)
+        gs = GridSpec(1, 2, figure=self.figure)
+
+        self.ax_angle = self.figure.add_subplot(gs[0, 0])
+        self.ax_distance = self.figure.add_subplot(gs[0, 1])
+
         self.ax_angle.set_xlabel("Time (frames)")
         self.ax_angle.set_ylabel("Angle (°)")
         self.ax_angle.set_title("Angle vs Time")
         self.ax_angle.set_ylim(0, 360)
+        self.ax_angle.set_autoscaley_on(False)
         self.ax_angle.grid(True)
 
-        self.ax_distance = self.figure.add_subplot(122)
         self.ax_distance.set_xlabel("Time (frames)")
         self.ax_distance.set_ylabel("Distance (mm)")
         self.ax_distance.set_title("Pick Distance vs Time")
         self.ax_distance.set_ylim(0, 60)
+        self.ax_distance.set_autoscaley_on(False)
         self.ax_distance.grid(True)
 
         self.line_angle, = self.ax_angle.plot([], [], 'b-', linewidth=1)
@@ -74,9 +80,9 @@ class EncoderPlotWindow(QMainWindow):
         self.line_angle.set_data(list(self.time_data), list(self.angle_data))
         self.line_distance.set_data(list(self.time_data), list(self.distance_data))
 
-        # 固定 Y 轴范围，autoscale_view 会覆盖它们
-        self.ax_angle.set_xlim(0, max(self.time_data) if self.time_data else 1)
-        self.ax_distance.set_xlim(0, max(self.time_data) if self.time_data else 1)
+        tmax = max(self.time_data) if self.time_data else 1
+        self.ax_angle.set_xlim(0, tmax)
+        self.ax_distance.set_xlim(0, tmax)
 
         self.angle_label.setText(f"Angle: {angle:.1f} °")
         self.distance_label.setText(f"Distance: {distance:.1f} mm")
