@@ -16,15 +16,9 @@ def generate_launch_description():
             }],
         ),
         Node(
-            package='stereo_pkg',
-            executable='stereo_camera_node',
-            name='stereo_camera_node',
-            output='screen',
-        ),
-        Node(
-            package='stereo_pkg',
-            executable='main_node',
-            name='main_node',
+            package='encoder_pkg',
+            executable='encoder_plot_node',
+            name='encoder_plot_node',
             output='screen',
         ),
     ])

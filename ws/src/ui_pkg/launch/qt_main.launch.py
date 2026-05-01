@@ -16,6 +16,16 @@ def generate_launch_description():
             }],
         ),
         Node(
+            package='imu_pkg',
+            executable='imu_node',
+            name='imu_driver_node',
+            output='screen',
+            parameters=[{
+                'port': '/dev/ttyUSB1',
+                'baudrate': 9600,
+            }],
+        ),
+        Node(
             package='stereo_pkg',
             executable='stereo_camera_node',
             name='stereo_camera_node',

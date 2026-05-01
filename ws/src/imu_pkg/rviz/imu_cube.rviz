@@ -1,0 +1,52 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+    Value: ~
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 1.0
+      Class: rviz_default_plugins/Grid
+      Name: Grid
+      Value: true
+      Plane: XY
+      Cell Size: 0.5
+      Line Style: Lines
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 0.5
+      Name: World Axes
+      Radius: 0.03
+      Reference Frame: base_link
+      Value: true
+    - Alpha: 0.75
+      Class: rviz_default_plugins/Marker
+      Marker Topic: /imu/cube_marker
+      Name: IMU Cube
+      Queue Size: 10
+      Value: true
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 0.35
+      Name: IMU Axes
+      Reference Frame: imu_link
+      Radius: 0.02
+      Value: true
+  Global Options:
+    Fixed Frame: base_link
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Interact
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 2.0
+      Name: Current View
+      Pitch: 0.4
+      Yaw: 0.8
+Window Geometry:
+  Height: 720
+  Width: 1080

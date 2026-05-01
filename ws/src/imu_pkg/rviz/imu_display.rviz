@@ -1,0 +1,42 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+    Property Tree Widget:
+      Expanded: ~
+    Value: ~
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Value: true
+    - Alpha: 0.8
+      Class: rviz_default_plugins/RobotModel
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+      Enabled: false
+      Name: RobotModel
+      Value: false
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 0.2
+      Name: IMU Orientation
+      Reference Frame: imu_link
+      Radius: 0.02
+      Value: true
+  Global Options:
+    Fixed Frame: imu_link
+  Tools:
+    - Class: rviz_default_plugins/MoveCamera
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 1.5
+      Name: Current View
+      Pitch: 0.3
+      Yaw: 0.8
+Window Geometry:
+  Height: 600
+  Width: 800
