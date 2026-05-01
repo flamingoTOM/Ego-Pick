@@ -1,7 +1,7 @@
 from setuptools import setup
 from glob import glob
 
-package_name = 'stereo_pkg'
+package_name = 'ui_pkg'
 
 setup(
     name=package_name,
@@ -16,12 +16,11 @@ setup(
     zip_safe=True,
     maintainer='User',
     maintainer_email='user@example.com',
-    description='Stereo camera package',
+    description='Ego-Pick main UI package',
     license='MIT',
     entry_points={
         'console_scripts': [
-            'stereo_camera_node = stereo_pkg.stereo_pub:main',
-            'stereo_viewer_node = stereo_pkg.stereo_viewer:main',
+            'main_ui_node = ui_pkg.main_ui:main',
         ],
     },
 )

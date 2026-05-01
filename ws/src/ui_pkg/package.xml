@@ -1,14 +1,16 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypenamespace="xsd"?>
 <package format="3">
-  <name>stereo_pkg</name>
+  <name>ui_pkg</name>
   <version>1.0.0</version>
-  <description>Stereo camera package</description>
+  <description>Ego-Pick main UI package</description>
   <maintainer email="user@example.com">User</maintainer>
   <license>MIT</license>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>encoder_pkg</exec_depend>
+  <exec_depend>stereo_pkg</exec_depend>
   <export>
     <build_type>ament_python</build_type>
   </export>
